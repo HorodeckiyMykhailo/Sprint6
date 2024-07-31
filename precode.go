@@ -6,10 +6,11 @@ import (
 	"fmt"
 	"net/http"
 
+	"log"
+
 	"github.com/go-chi/chi/v5"
 )
 
-// Task ...
 type Task struct {
 	ID           string   `json:"id"`
 	Description  string   `json:"description"`
@@ -41,8 +42,6 @@ var tasks = map[string]Task{
 	},
 }
 
-// Ниже напишите обработчики для каждого эндпоинта
-
 func getTask(w http.ResponseWriter, r *http.Request) {
 	resp, err := json.Marshal(tasks)
 	if err != nil {
@@ -52,6 +51,7 @@ func getTask(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(resp)
+	log.Println(err)
 }
 
 func postTask(w http.ResponseWriter, r *http.Request) {
@@ -65,6 +65,10 @@ func postTask(w http.ResponseWriter, r *http.Request) {
 	}
 	if err = json.Unmarshal(buf.Bytes(), &task); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if _, exist := tasks[task.ID]; exist {
+		http.Error(w, "Задание с таким ID уже существует", http.StatusBadRequest)
 		return
 	}
 	tasks[task.ID] = task
@@ -82,12 +86,13 @@ func getTaskID(w http.ResponseWriter, r *http.Request) {
 	}
 	resp, err := json.Marshal(task)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	w.Write(resp)
+	log.Println(err)
 }
 
 func deleteTask(w http.ResponseWriter, r *http.Request) {
@@ -97,17 +102,14 @@ func deleteTask(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Задание не найдено", http.StatusBadRequest)
 		return
 	}
-
 	delete(tasks, id)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-
 }
 
 func main() {
 	r := chi.NewRouter()
 
-	// здесь регистрируйте ваши обработчики
 	r.Get("/tasks", getTask)
 	r.Post("/tasks", postTask)
 	r.Get("/tasks/{id}", getTaskID)
